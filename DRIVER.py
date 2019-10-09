@@ -26,7 +26,7 @@ save = {}
 api = tweepy.API()
 stats = {}
 
-timelineNodeA = 2
+timelineNodeA = 3
 replyNodeA = 1
 analyzeNodeA = 2
 
@@ -61,10 +61,10 @@ def init():
   api = tweepy.API(auth_handler=auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 init()
 
-#u1 = api.get_user(612473)
-#idQueue.put(u1.id)
-u2 = api.get_user("FoxNews")
-idQueue.put(u2.id)
+u1 = api.get_user(612473)
+idQueue.put(u1.id)
+#u2 = api.get_user("FoxNews")
+#idQueue.put(u2.id)
 
 def backupThread(x:int):
     while True:
@@ -106,6 +106,17 @@ def timelineNodejob(x:int):
             except:
                 print("couldnt get Timeline " + str(user))
             ends += 1
+    while not idQueue.empty():
+        user = 0
+        try:
+            user = idQueue.get_nowait()
+        except:
+            time.sleep(1)
+        if user != 0:
+            try:
+                getInfo(user)
+            except:
+                print("couldnt get info " + str(user))
     tNodeStatus[x] = 1
     backupThread(30)
     print("done with t " + str(x))
@@ -160,7 +171,10 @@ def endNodeJob():
                 user = endQueue.get_nowait()
             except:
                 time.sleep(1)
-        putInQueue(user)
+        try:
+            putInQueue(user)
+        except:
+            print("couldnt end " + str(user))
     while 0 in tNodeStatus or 0 in aNodeStatus or 0 in rNodeStatus:
         time.sleep(1)
     time.sleep(1)
@@ -205,28 +219,43 @@ def getTimeline(user:int):
     if str(user) not in save.keys():
         initUser(user)
     if len(save[str(user)]["timeline"]) == 0 or reloadTimelines:
-        rett = api.user_timeline(user)
-        print("called Timeline")
-        person = api.get_user(user)
-        followers = person.followers_count
-        friends = person.friends_count
-        favourites = person.favourites_count
-        statuses = person.statuses_count
-        ret = []
-        for k in rett:
-            ret.append(str(k.id))
-            if str(k.id) not in stats.keys():
-                stats[str(k.id)] = {}
-                stats[str(k.id)]["followers"] = followers
-                stats[str(k.id)]["friends"] = friends
-                stats[str(k.id)]["favourited"] = favourites
-                stats[str(k.id)]["statuscount"] = statuses
-                stats[str(k.id)]["favourites"] = k.favorite_count
-                stats[str(k.id)]["retweets"] = k.retweet_count
-        save[str(user)]["timeline"] = ret
+        save[str(user)]["timeline"] = getInfo(user)
         replyQueue.put(user)
+    #save[str(user)]["timeline"] = getInfo(user)
+    #replyQueue.put(user)
     else:
         replyQueue.put(user)
+
+def getInfo(user:int)->[]:
+    global stats
+    rett = api.user_timeline(user)
+    print("called Timeline " + str(user))
+    person = api.get_user(user)
+    followers = person.followers_count
+    friends = person.friends_count
+    favourites = person.favourites_count
+    statuses = person.statuses_count
+    ret = []
+    for k in rett:
+        ret.append(str(k.id))
+        if str(k.id) not in stats.keys():
+            stats[str(k.id)] = {}
+            stats[str(k.id)]["followers"] = followers
+            stats[str(k.id)]["friends"] = friends
+            stats[str(k.id)]["favourited"] = favourites
+            stats[str(k.id)]["statuscount"] = statuses
+            j = str((k.created_at - datetime.now()).total_seconds())
+            stats[str(k.id)]["time"] = j
+            try:
+                stats[str(k.id)]["favourites"] = k.retweeted_status.favorite_count
+                stats[str(k.id)]["time"] = str((k.retweeted_status.created_at - datetime.now()).total_seconds())
+            except:
+                stats[str(k.id)]["favourites"] = k.favorite_count
+
+            stats[str(k.id)]["retweets"] = k.retweet_count
+    return ret
+
+
 def getRetweets(ids:[], user:int):
     #print("got to Retweets")
     if save[str(user)]["retweets"]["init"] == 0 or reloadRetweets:
@@ -249,8 +278,10 @@ def getReplies(user:int):
         options.add_argument('-headless')
 
         browser = webdriver.Firefox(executable_path=path, firefox_options=options)
-
+        i = 0
         for x in save[str(user)]["timeline"]:
+            #if i == 5 :
+                #break
             time.sleep(1)
             browser.get("https://twitter.com/i/web/status/" + x)
             soup = BeautifulSoup(browser.page_source)
@@ -261,6 +292,7 @@ def getReplies(user:int):
                     datum.append(x["data-user-id"])
             ret = datum
             save[str(user)]["replies"] += ret
+            i+=1
         browser.quit()
     analyzeQueue.put(user)
 def analyze(user:id):
