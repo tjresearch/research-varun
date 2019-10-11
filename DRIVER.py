@@ -26,7 +26,7 @@ save = {}
 api = tweepy.API()
 stats = {}
 
-timelineNodeA = 3
+timelineNodeA = 2
 replyNodeA = 1
 analyzeNodeA = 2
 
@@ -74,16 +74,22 @@ def backupThread(x:int):
                 dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
                 with open("backups/backup_" + dt_string + ".json", "w+") as json_file:
                     json.dump(save, json_file, indent=4)
-                now = datetime.now()
-                dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
-                with open("statsbackups/statsbackup_" + dt_string + ".json", "w+") as json_file:
-                    json.dump(stats, json_file, indent=4)
         except:
             now = datetime.now()
             print("Warning couldnt backup " + now.strftime("%d_%m_%Y_%H_%M_%S"))
+
+        try:
+            now = datetime.now()
+            dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
+            with open("statsbackups/statsbackup_" + dt_string + ".json", "w+") as json_file:
+                json.dump(stats, json_file, indent=4)
+        except:
+            now = datetime.now()
+            print("Warning couldnt statsbackup " + now.strftime("%d_%m_%Y_%H_%M_%S"))
+
         if x != 0:
             break
-        time.sleep(600)
+        time.sleep(60)
 
 
 def timelineNodejob(x:int):
@@ -244,11 +250,11 @@ def getInfo(user:int)->[]:
             stats[str(k.id)]["friends"] = friends
             stats[str(k.id)]["favourited"] = favourites
             stats[str(k.id)]["statuscount"] = statuses
-            j = str((k.created_at - datetime.now()).total_seconds())
+            j = abs(int((k.created_at - datetime.now()).total_seconds()))
             stats[str(k.id)]["time"] = j
             try:
                 stats[str(k.id)]["favourites"] = k.retweeted_status.favorite_count
-                stats[str(k.id)]["time"] = str((k.retweeted_status.created_at - datetime.now()).total_seconds())
+                stats[str(k.id)]["time"] = abs(int((k.retweeted_status.created_at - datetime.now()).total_seconds()))
             except:
                 stats[str(k.id)]["favourites"] = k.favorite_count
 
