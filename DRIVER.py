@@ -26,7 +26,7 @@ save = {}
 api = tweepy.API()
 stats = {}
 
-timelineNodeA = 2
+timelineNodeA = 7
 replyNodeA = 1
 analyzeNodeA = 2
 
@@ -83,7 +83,8 @@ def backupThread(x:int):
             dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
             with open("statsbackups/statsbackup_" + dt_string + ".json", "w+") as json_file:
                 json.dump(stats, json_file, indent=4)
-        except:
+        except Exception as e:
+            print(e)
             now = datetime.now()
             print("Warning couldnt statsbackup " + now.strftime("%d_%m_%Y_%H_%M_%S"))
 
@@ -234,6 +235,8 @@ def getTimeline(user:int):
 
 def getInfo(user:int)->[]:
     global stats
+    if str(user) in stats.keys():
+        return []
     rett = api.user_timeline(user)
     print("called Timeline " + str(user))
     person = api.get_user(user)
@@ -279,11 +282,11 @@ def getRetweets(ids:[], user:int):
 def getReplies(user:int):
     #print("got to Replies")
     if len(save[str(user)]["replies"]) == 0 or reloadReplies:
-        path = os.path.abspath("geckodriver")
-        options = webdriver.FirefoxOptions()
-        options.add_argument('-headless')
+        path = os.path.abspath("phantomjs-2.1.1-linux-x86_64/bin/phantomjs")
+        #options = webdriver.FirefoxOptions()
+        #options.add_argument('-headless')
 
-        browser = webdriver.Firefox(executable_path=path, firefox_options=options)
+        browser = webdriver.PhantomJS(executable_path=path)#, firefox_options=options)
         i = 0
         for x in save[str(user)]["timeline"]:
             #if i == 5 :
