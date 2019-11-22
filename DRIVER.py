@@ -12,6 +12,7 @@ import curses.textpad
 from sys import getsizeof
 
 
+
 reloadTimelines = False
 reloadInteractions = False
 reloadRetweets = False
@@ -29,6 +30,7 @@ save = {}
 api = tweepy.API()
 stats = {}
 
+waiting = 0
 timelineNodeA = 1
 replyNodeA = 1
 analyzeNodeA = 1
@@ -64,7 +66,7 @@ def init():
   access_token_secret = "d0zLEPH8ZqNSePfyaZqIpCEHp7CfdJh04u7V3lscRh2ev"
   auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
   auth.set_access_token(access_token, access_token_secret)
-  api = tweepy.API(auth_handler=auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+  api = tweepy.API(auth_handler=auth, wait_on_rate_limit=True)
 init()
 
 u1 = api.get_user(612473)
@@ -74,29 +76,33 @@ idQueue.put(u1.id)
 
 def backupThread(x:int):
     while True:
+        now = datetime.now()
+        dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
+        successB = 0
+        successS = 0
         try:
-            now = datetime.now()
-            dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
             with open("save.json") as json_file:
                 with open("backups/backup_" + dt_string + ".json", "w+") as json_file:
                     json.dump(save, json_file, indent=4)
-            backupInfo[1] = "lastB " + dt_string + " " + str(getsizeof(save))
-        except:
-            now = datetime.now()
-            print("Warning couldnt backup " + now.strftime("%d_%m_%Y_%H_%M_%S"))
+            backupInfo[1] = "lastB " + dt_string + " " + str(os.stat("backups/backup_" + dt_string + ".json").st_size)
+            successB = 1
+        except Exception as e:
+            exceptions.put_nowait(e)
+            #now = datetime.now()
+            #print("Warning couldnt backup " + now.strftime("%d_%m_%Y_%H_%M_%S"))
 
         try:
-            now = datetime.now()
-            dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
             with open("statsbackups/statsbackup_" + dt_string + ".json", "w+") as json_file:
                 json.dump(stats, json_file, indent=4)
-        except:
-            now = datetime.now()
-            print("Warning couldnt statsbackup " + now.strftime("%d_%m_%Y_%H_%M_%S"))
-
+            backupInfo[2] = "lastS " + dt_string + " " + str(os.stat("statsbackups/statsbackup_" + dt_string + ".json").st_size)
+            successS = 1
+        except Exception as e:
+            exceptions.put_nowait(e)
+        if successB == 1 and successS == 1:
+            backupInfo[0] = "LastWholeUpdate " + dt_string
         if x != 0:
             break
-        time.sleep(60)
+        time.sleep(600)
 
 
 def timelineNodejob(x:int):
@@ -113,11 +119,12 @@ def timelineNodejob(x:int):
             except:
                 time.sleep(1)
         if not quitt:
-            print("got to Timeline " + str(user))
+            #print("got to Timeline " + str(user))
             try:
                 getTimeline(user)
-            except:
-                print("couldnt get Timeline " + str(user))
+            except Exception as e:
+                exceptions.put_nowait(e)
+                #print("couldnt get Timeline " + str(user))
             ends += 1
     while not idQueue.empty():
         user = 0
@@ -128,11 +135,12 @@ def timelineNodejob(x:int):
         if user != 0:
             try:
                 getInfo(user)
-            except:
-                print("couldnt get info " + str(user))
+            except Exception as e:
+                #print("couldnt get info " + str(user))
+                exceptions.put_nowait(e)
     tNodeStatus[x] = 1
     backupThread(30)
-    print("done with t " + str(x))
+    #print("done with t " + str(x))
 
 def replyNodejob(x:int):
     global quitt
@@ -144,13 +152,14 @@ def replyNodejob(x:int):
                 user = replyQueue.get_nowait()
             except:
                 time.sleep(1)
-        print("got to replies " + str(user))
+        #print("got to replies " + str(user))
         try:
             getReplies(user)
-        except:
-            print("couldnt get replies " + str(user))
+        except Exception as e:
+            exceptions.put_nowait(e)
+            #print("couldnt get replies " + str(user))
     rNodeStatus[x] = 1
-    print("done with r "+str(x))
+    #print("done with r "+str(x))
 
 def analyzeNodejob(x:int):
     global quitt
@@ -162,13 +171,14 @@ def analyzeNodejob(x:int):
                 user = analyzeQueue.get_nowait()
             except:
                 time.sleep(1)
-        print("got to analyze " + str(user))
+        #print("got to analyze " + str(user))
         try:
             analyze(user)
-        except:
-            print("could not analyze " + str(user))
+        except Exception as e:
+            exceptions.put_nowait(e)
+            #print("could not analyze " + str(user))
     aNodeStatus[x] = 1
-    print("done with A " + str(x))
+    #print("done with A " + str(x))
 
 def endNodeJob():
     global quitt
@@ -186,8 +196,9 @@ def endNodeJob():
                 time.sleep(1)
         try:
             putInQueue(user)
-        except:
-            print("couldnt end " + str(user))
+        except Exception as e:
+            exceptions.put_nowait(e)
+            #print("couldnt end " + str(user))
     while 0 in tNodeStatus or 0 in aNodeStatus or 0 in rNodeStatus:
         time.sleep(1)
     time.sleep(1)
@@ -195,7 +206,7 @@ def endNodeJob():
         json.dump(save, json_file,indent=4)
     quit(1)
     #putInQueue(user)
-    print("done")
+    #print("done")
 
 
 
@@ -212,8 +223,9 @@ try:
     dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
     with open("statsbackups/statsbackup_" + dt_string + ".json", "w+") as json_file:
         json.dump(stats, json_file, indent=4)
-except:
-    print("Could Not Open File or Save Backup Aborting process")
+except Exception as e:
+    exceptions.put_nowait(e)
+    #print("Could Not Open File or Save Backup Aborting process")
     exit(1)
 
 def initUser(user:int):
@@ -242,7 +254,7 @@ def getTimeline(user:int):
 def getInfo(user:int)->[]:
     global stats
     rett = api.user_timeline(user)
-    print("called Timeline " + str(user))
+    #print("called Timeline " + str(user))
     person = api.get_user(user)
     followers = person.followers_count
     friends = person.friends_count
@@ -274,7 +286,7 @@ def getRetweets(ids:[], user:int):
     if save[str(user)]["retweets"]["init"] == 0 or reloadRetweets:
         for x in ids:
             k = api.retweeters(x)
-            print("called retweet")
+            #print("called retweet")
             ret = []
             for i in k:
                 ret.append(str(i))
@@ -510,16 +522,18 @@ def main():
 def switchboard(type:str):
     global sel
     notExit = True
-    lines = ['status', "threads", "backup", "Close Program"]
+    lines = ['status',"exceptions", "threads", "backup", "Close Program"]
     while(notExit):
         if(type == "backup"):
-            lines = ["last succesful update 15 min ago", "backup + time + time", "statsbackup + time + size", "exceptions + 7","allbackup","back"]
+            lines = backupInfo
         elif(type == "threads"):
-            lines = ["thread1 + job + status", "thread2 + job + status", "thread3 + job + status", "back"]
+            lines = threadInfo()
         elif(type == "status"):
-            lines = ["56 succesfully analyzed", "preliminary on 107", "job thread waiting for api call", "back"]
+            lines = statusInfo()
+        elif(type == "exceptions"):
+            lines = ExceptionsInfo()
         elif(type == "back"):
-            lines = ['status', "threads", "backup", "Close Program"]
+            lines = ['status',"exceptions", "threads", "backup", "Close Program"]
         elif(type == "Close"):
             notExit = False
             continue
@@ -532,5 +546,47 @@ def switchboard(type:str):
         # except IndexError:
         #     type = "back"
         #     print(sel)
+
+def backuptext() -> []:
+    return backupInfo
+def ExceptionsInfo()->[]:
+    return list(map(lambda s: str(s).replace("\n","\t"),list(exceptions))).append("back")
+def threadInfo()->[]:
+    temp = [""]*(timelineNodeA+replyNodeA+analyzeNodeA)
+    i = 0
+    for s in tNodeStatus:
+        temp[i] = "thread"+str(i)+" timelineThread " + str(s)
+        i+=1
+    for s in rNodeStatus:
+        temp[i] = "thread" + str(i) + " replyThread " + str(s)
+        i+=1
+    for s in aNodeStatus:
+        temp[i] = "thread" + str(i) + " analyzeThread " + str(s)
+        i+=1
+    temp.append("back")
+    return temp
+def statusInfo()->[]:
+    temp = ["succesfully analyzed 56", "preliminary on 100", "statuses remaining","retweets remaining","shows remaining","user_timelines remaining","lookups remaining" "uptime", "back"]
+    temp[0] = "succesfully analyzed " + str(len(save))
+    temp[1] = "preliminary on " + str(len(stats))
+    t=api.rate_limit_status()
+    s = t['resources']['lists']['/lists/statuses']['remaining']
+    s1 = t['resources']['users']['/users/show/:id']['remaining']
+    s2 = t['resources']['statuses']['/statuses/user_timeline']['remaining']
+    s3 = t['resources']['statuses']['/statuses/retweets/:id']['remaining']
+    s4 = t['resources']['statuses']['/statuses/lookup']['remaining']
+    temp[2] = "statuses remaining " + str(s)
+    temp[3] = "retweets remaining " + str(s3)
+    temp[4] = "shows remaining " + str(s1)
+    temp[5] = "user_timelines remaining " + str(s2)
+    temp[6] = "lookups remaining " + str(s4)
+    temp[7] = "uptime " + str(time.time()-start_time)
+    temp.append("back")
+    return temp
+
+
+
+
+start_time = time.time()
 if __name__ == '__main__':
     main()
