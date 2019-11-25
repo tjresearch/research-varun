@@ -44,6 +44,7 @@ rNodeStatus = [0] * replyNodeA
 aNodeStatus = [0] * analyzeNodeA
 
 exceptions = Queue()
+Net = []
 backupInfo = ["last whole update", "lastB backup update + size", "lastS statsbackup update + size", "backupnow", "back"]
 
 
@@ -74,16 +75,17 @@ idQueue.put(u1.id)
 #u2 = api.get_user("FoxNews")
 #idQueue.put(u2.id)
 
-def backupThread(x:int):
+def backupThread(x:int)->bool:
     while True:
         now = datetime.now()
         dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
         successB = 0
         successS = 0
         try:
-            with open("save.json") as json_file:
+            with open("save.json", "w+") as json_filei:
                 with open("backups/backup_" + dt_string + ".json", "w+") as json_file:
                     json.dump(save, json_file, indent=4)
+                json.dump(save, json_filei, indent=4)
             backupInfo[1] = "lastB " + dt_string + " " + str(os.stat("backups/backup_" + dt_string + ".json").st_size)
             successB = 1
         except Exception as e:
@@ -92,16 +94,18 @@ def backupThread(x:int):
             #print("Warning couldnt backup " + now.strftime("%d_%m_%Y_%H_%M_%S"))
 
         try:
-            with open("statsbackups/statsbackup_" + dt_string + ".json", "w+") as json_file:
-                json.dump(stats, json_file, indent=4)
-            backupInfo[2] = "lastS " + dt_string + " " + str(os.stat("statsbackups/statsbackup_" + dt_string + ".json").st_size)
+            with open("stats.json", "w+") as json_filei:
+                with open("statsbackups/statsbackup_" + dt_string + ".json", "w+") as json_file:
+                    json.dump(stats, json_file, indent=4)
+                backupInfo[2] = "lastS " + dt_string + " " + str(os.stat("statsbackups/statsbackup_" + dt_string + ".json").st_size)
+                json.dump(stats, json_filei, indent=4)
             successS = 1
         except Exception as e:
             exceptions.put_nowait(e)
         if successB == 1 and successS == 1:
             backupInfo[0] = "LastWholeUpdate " + dt_string
         if x != 0:
-            break
+            return successS == 1 and successB == 1
         time.sleep(600)
 
 
@@ -309,7 +313,7 @@ def getReplies(user:int):
                 #break
             time.sleep(1)
             browser.get("https://twitter.com/i/web/status/" + x)
-            soup = BeautifulSoup(browser.page_source)
+            soup = BeautifulSoup(browser.page_source, "lxml")
             data = soup.find_all(class_="account-group")
             datum = []
             for x in data:
@@ -532,9 +536,20 @@ def switchboard(type:str):
             lines = statusInfo()
         elif(type == "exceptions"):
             lines = ExceptionsInfo()
+        elif(type == "backupnow"):
+            lines = ["backingup up will hang the TUI, please be wait until the program stops hanging to proceed", "back"]
+        elif(type == "backingup"):
+            truth = backupThread(1)
+            if(truth):
+                lines = ["success", "back"]
+            else:
+                lines = ["unsuccessful", "exceptions" ,"back"]
         elif(type == "back"):
             lines = ['status',"exceptions", "threads", "backup", "Close Program"]
         elif(type == "Close"):
+            lines = ["exiting the program will ensure unsaved data is lost, please backup before exiting","kill the program", "backupnow", "back"]
+        elif(type == "kill"):
+            lines = statusInfo()
             notExit = False
             continue
         screen = Screen(lines)
@@ -550,7 +565,14 @@ def switchboard(type:str):
 def backuptext() -> []:
     return backupInfo
 def ExceptionsInfo()->[]:
-    return list(map(lambda s: str(s).replace("\n","\t"),list(exceptions))).append("back")
+    while exceptions.qsize() != 0:
+        Net.append(exceptions.get_nowait())
+    if len(Net) == 0:
+        ret = ["no exceptions","back"]
+        return ret
+    ret = list(map(repr,Net))
+    ret.append("back")
+    return ret
 def threadInfo()->[]:
     temp = [""]*(timelineNodeA+replyNodeA+analyzeNodeA)
     i = 0
