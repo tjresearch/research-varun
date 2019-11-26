@@ -31,9 +31,9 @@ api = tweepy.API()
 stats = {}
 
 waiting = 0
-timelineNodeA = 1
+timelineNodeA = 5
 replyNodeA = 1
-analyzeNodeA = 1
+analyzeNodeA = 5
 
 timelineNodes = []
 replyNode = []
@@ -302,11 +302,15 @@ def getRetweets(ids:[], user:int):
 def getReplies(user:int):
     #print("got to Replies")
     if len(save[str(user)]["replies"]) == 0 or reloadReplies:
-        path = os.path.abspath("geckodriver")
-        options = webdriver.FirefoxOptions()
-        options.add_argument('-headless')
+        #path = os.path.abspath("geckodriver")
+        #options = webdriver.FirefoxOptions()
+        #options.add_argument('-headless')
 
-        browser = webdriver.Firefox(executable_path=path, firefox_options=options)
+        #browser = webdriver.Firefox(executable_path=path, firefox_options=options)
+        path = os.path.abspath("phantomjs-2.1.1-linux-x86_64/bin/phantomjs")
+                #options = webdriver.FirefoxOptions()
+                        #options.add_argument('-headle
+        browser = webdriver.PhantomJS(executable_path=path)#, firefox_options=options)
         i = 0
         for x in save[str(user)]["timeline"]:
             #if i == 5 :
