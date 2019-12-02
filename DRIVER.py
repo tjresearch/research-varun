@@ -10,8 +10,8 @@ import threading
 import curses
 import curses.textpad
 from sys import getsizeof
-
-
+import warnings
+warnings.filterwarnings('ignore')
 
 reloadTimelines = False
 reloadInteractions = False
@@ -47,6 +47,10 @@ exceptions = Queue()
 Net = []
 backupInfo = ["last whole update", "lastB backup update + size", "lastS statsbackup update + size", "backupnow", "back"]
 
+path = os.path.abspath("phantomjs-2.1.1-linux-x86_64/bin/phantomjs")
+# options = webdriver.FirefoxOptions()
+# options.add_argument('-headle
+browser = webdriver.PhantomJS(executable_path=path)  # , firefox_options=options)
 
 def initThreads():
     global endNode
@@ -72,8 +76,8 @@ init()
 
 u1 = api.get_user(612473)
 idQueue.put(u1.id)
-#u2 = api.get_user("FoxNews")
-#idQueue.put(u2.id)
+u2 = api.get_user("FoxNews")
+idQueue.put(u2.id)
 
 def backupThread(x:int)->bool:
     while True:
@@ -300,6 +304,7 @@ def getRetweets(ids:[], user:int):
         replyQueue.put(user)
 
 def getReplies(user:int):
+    global browser
     #print("got to Replies")
     if len(save[str(user)]["replies"]) == 0 or reloadReplies:
         #path = os.path.abspath("geckodriver")
@@ -307,10 +312,7 @@ def getReplies(user:int):
         #options.add_argument('-headless')
 
         #browser = webdriver.Firefox(executable_path=path, firefox_options=options)
-        path = os.path.abspath("phantomjs-2.1.1-linux-x86_64/bin/phantomjs")
-                #options = webdriver.FirefoxOptions()
-                        #options.add_argument('-headle
-        browser = webdriver.PhantomJS(executable_path=path)#, firefox_options=options)
+
         i = 0
         for x in save[str(user)]["timeline"]:
             #if i == 5 :
@@ -326,7 +328,6 @@ def getReplies(user:int):
             ret = datum
             save[str(user)]["replies"] += ret
             i+=1
-        browser.quit()
     analyzeQueue.put(user)
 def analyze(user:id):
     #print("got to Analyze")
@@ -526,6 +527,8 @@ def input_stream(self):
 
 def main():
     switchboard("nah")
+    global browser
+    browser.quit()
 
 def switchboard(type:str):
     global sel
