@@ -691,7 +691,7 @@ def getTimelineQueue()->[]:
     return ["back"]
 def getAnalyzeQueue()->[]:
     try: #try catch 13
-        i = 0ret = list(map(lambda x : repr(x[0]) + " // " + str(x[1]),Net))
+        i = 0
         getQueue = lambda q, ret, ki: ret if (ki >= 10 or q.empty()) else getQueue(q,ret.append(str(q.get_nowait())), ki+1)
         # while not analyzed.empty() or i < 10:
         #     ans.append(str(analyzed.get_nowait()))
