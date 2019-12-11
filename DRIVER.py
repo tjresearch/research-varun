@@ -25,15 +25,14 @@ idQueue = Queue()
 replyQueue = Queue()
 analyzeQueue = Queue()
 endQueue = Queue()
-endNode:threading.Thread
 save = {}
 api = tweepy.API()
 stats = {}
 
 waiting = 0
-timelineNodeA = 5
+timelineNodeA = 1
 replyNodeA = 1
-analyzeNodeA = 5
+analyzeNodeA = 1
 
 timelineNodes = []
 replyNode = []
@@ -44,13 +43,19 @@ rNodeStatus = [0] * replyNodeA
 aNodeStatus = [0] * analyzeNodeA
 
 exceptions = Queue()
+accounts = Queue()
 Net = []
+replies = Queue()
+reps = ["back"]
+timelines = Queue()
+times = ["back"]
+analyzed = Queue()
+ans = ["back"]
+Counts = ["back"]
 backupInfo = ["last whole update", "lastB backup update + size", "lastS statsbackup update + size", "backupnow", "back"]
 
-path = os.path.abspath("phantomjs-2.1.1-linux-x86_64/bin/phantomjs")
-# options = webdriver.FirefoxOptions()
-# options.add_argument('-headle
-browser = webdriver.PhantomJS(executable_path=path)  # , firefox_options=options)
+
+ # , firefox_options=options)
 
 def initThreads():
     global endNode
@@ -60,7 +65,7 @@ def initThreads():
         replyNode.append(threading.Thread(target=replyNodejob,daemon=True,args=[x]))
     for x in range(0, analyzeNodeA):
         analyzeNode.append(threading.Thread(target=analyzeNodejob,daemon=True,args=[x]))
-    endNode = threading.Thread(target= endNodeJob)
+    #endNode = threading.Thread(target=endNodeJob,daemon=True,args=[1])
 
 def init():
   global api
@@ -74,9 +79,7 @@ def init():
   api = tweepy.API(auth_handler=auth, wait_on_rate_limit=True)
 init()
 
-u1 = api.get_user(612473)
-idQueue.put(u1.id)
-u2 = api.get_user("FoxNews")
+u2 = api.get_user("CNN")
 idQueue.put(u2.id)
 
 def backupThread(x:int)->bool:
@@ -85,7 +88,7 @@ def backupThread(x:int)->bool:
         dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
         successB = 0
         successS = 0
-        try:
+        try: #try catch 1
             with open("save.json", "w+") as json_filei:
                 with open("backups/backup_" + dt_string + ".json", "w+") as json_file:
                     json.dump(save, json_file, indent=4)
@@ -93,11 +96,11 @@ def backupThread(x:int)->bool:
             backupInfo[1] = "lastB " + dt_string + " " + str(os.stat("backups/backup_" + dt_string + ".json").st_size)
             successB = 1
         except Exception as e:
-            exceptions.put_nowait(e)
+            exceptions.put_nowait((e,1))
             #now = datetime.now()
             #print("Warning couldnt backup " + now.strftime("%d_%m_%Y_%H_%M_%S"))
 
-        try:
+        try: #try catch 2
             with open("stats.json", "w+") as json_filei:
                 with open("statsbackups/statsbackup_" + dt_string + ".json", "w+") as json_file:
                     json.dump(stats, json_file, indent=4)
@@ -105,7 +108,7 @@ def backupThread(x:int)->bool:
                 json.dump(stats, json_filei, indent=4)
             successS = 1
         except Exception as e:
-            exceptions.put_nowait(e)
+            exceptions.put_nowait((e, 2))
         if successB == 1 and successS == 1:
             backupInfo[0] = "LastWholeUpdate " + dt_string
         if x != 0:
@@ -116,6 +119,7 @@ def backupThread(x:int)->bool:
 def timelineNodejob(x:int):
     global quitt
     global tNodeStatus
+    global idQueue
     ends = 0
     while not quitt:
         user = 0
@@ -128,10 +132,11 @@ def timelineNodejob(x:int):
                 time.sleep(1)
         if not quitt:
             #print("got to Timeline " + str(user))
-            try:
+            try: #try catch 3
+                #idQueue.put_nowait(user)
                 getTimeline(user)
             except Exception as e:
-                exceptions.put_nowait(e)
+                exceptions.put_nowait((e, 3))
                 #print("couldnt get Timeline " + str(user))
             ends += 1
     while not idQueue.empty():
@@ -141,11 +146,11 @@ def timelineNodejob(x:int):
         except:
             time.sleep(1)
         if user != 0:
-            try:
+            try: #try catch 4
                 getInfo(user)
             except Exception as e:
                 #print("couldnt get info " + str(user))
-                exceptions.put_nowait(e)
+                exceptions.put_nowait((e, 4))
     tNodeStatus[x] = 1
     backupThread(30)
     #print("done with t " + str(x))
@@ -161,10 +166,11 @@ def replyNodejob(x:int):
             except:
                 time.sleep(1)
         #print("got to replies " + str(user))
-        try:
+        try: #try catch 5
+            replies.put_nowait(user)
             getReplies(user)
         except Exception as e:
-            exceptions.put_nowait(e)
+            exceptions.put_nowait((e,5))
             #print("couldnt get replies " + str(user))
     rNodeStatus[x] = 1
     #print("done with r "+str(x))
@@ -180,15 +186,15 @@ def analyzeNodejob(x:int):
             except:
                 time.sleep(1)
         #print("got to analyze " + str(user))
-        try:
+        try: #try catch 6
             analyze(user)
         except Exception as e:
-            exceptions.put_nowait(e)
+            exceptions.put_nowait((e,6))
             #print("could not analyze " + str(user))
     aNodeStatus[x] = 1
     #print("done with A " + str(x))
 
-def endNodeJob():
+def endNodeJob(x:int):
     global quitt
     global tNodeStatus
     global aNodeStatus
@@ -204,8 +210,8 @@ def endNodeJob():
                 time.sleep(1)
         try:
             putInQueue(user)
-        except Exception as e:
-            exceptions.put_nowait(e)
+        except Exception as e: #try catch 7
+            exceptions.put_nowait((e, 7))
             #print("couldnt end " + str(user))
     while 0 in tNodeStatus or 0 in aNodeStatus or 0 in rNodeStatus:
         time.sleep(1)
@@ -231,8 +237,8 @@ try:
     dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
     with open("statsbackups/statsbackup_" + dt_string + ".json", "w+") as json_file:
         json.dump(stats, json_file, indent=4)
-except Exception as e:
-    exceptions.put_nowait(e)
+except Exception as e: #try catch 8
+    exceptions.put_nowait((e,8))
     #print("Could Not Open File or Save Backup Aborting process")
     exit(1)
 
@@ -249,6 +255,7 @@ def initUser(user:int):
 
 def getTimeline(user:int):
     #print("got to Timeline")
+    timelines.put_nowait(user)
     if str(user) not in save.keys():
         initUser(user)
     if len(save[str(user)]["timeline"]) == 0 or reloadTimelines:
@@ -304,33 +311,50 @@ def getRetweets(ids:[], user:int):
         replyQueue.put(user)
 
 def getReplies(user:int):
-    global browser
+
+    #path = os.path.abspath("phantomjs-2.1.1-linux-x86_64/bin/phantomjs")
+    browser = webdriver.Chrome
     #print("got to Replies")
-    if len(save[str(user)]["replies"]) == 0 or reloadReplies:
-        #path = os.path.abspath("geckodriver")
-        #options = webdriver.FirefoxOptions()
-        #options.add_argument('-headless')
+    try:
+        if len(save[str(user)]["replies"]) == 0 or reloadReplies:
+            #path = os.path.abspath("geckodriver")
+            #options = webdriver.FirefoxOptions()
+            #options.add_argument('-headless')
 
-        #browser = webdriver.Firefox(executable_path=path, firefox_options=options)
+            #browser = webdriver.Firefox(executable_path=path, firefox_options=options)
+            path = os.path.abspath("chromedriver")
+            # options = webdriver.FirefoxOptions()
+            options = webdriver.ChromeOptions()
+            options.add_argument("-headless")
+            # browser = webdriver.PhantomJS(executable_path=path)
+            browser = webdriver.Chrome(executable_path=path, options=options)
 
-        i = 0
-        for x in save[str(user)]["timeline"]:
-            #if i == 5 :
-                #break
-            time.sleep(1)
-            browser.get("https://twitter.com/i/web/status/" + x)
-            soup = BeautifulSoup(browser.page_source, "lxml")
-            data = soup.find_all(class_="account-group")
-            datum = []
-            for x in data:
-                if x.has_attr("data-user-id"):
-                    datum.append(x["data-user-id"])
-            ret = datum
-            save[str(user)]["replies"] += ret
-            i+=1
-    analyzeQueue.put(user)
+            i = 0
+            for x in save[str(user)]["timeline"]:
+                #if i == 5 :
+                    #break
+                time.sleep(1)
+                browser.get("https://twitter.com/i/web/status/" + x)
+                soup = BeautifulSoup(browser.page_source, "lxml")
+                replycount = int(soup.find(class_ = "ProfileTweet-actionCountForPresentation").string)
+                stats[x]["replycount"] = replycount
+                data = soup.find_all(class_="account-group")
+                datum = []
+                for x in data:
+                    if x.has_attr("data-user-id"):
+                        datum.append(x["data-user-id"])
+                ret = datum
+                save[str(user)]["replies"] += ret
+                i+=1
+        analyzeQueue.put(user)
+        browser.quit()
+    except Exception as e: #try catch 9
+        exceptions.put_nowait((e, 9))
+        browser.quit()
+
 def analyze(user:id):
     #print("got to Analyze")
+    analyzed.put_nowait(user)
     interactions = {}
     suser = str(user)
     for x in save[suser]["retweets"].keys():
@@ -350,7 +374,8 @@ def analyze(user:id):
 def putInQueue(user:id):
     kil = list(map(int, save[str(user)]["interactions"].keys()))
     for x in kil:
-        idQueue.put(x)
+        idQueue.put_nowait(x)
+        timelines.put_nowait(x)
 
 initThreads()
 
@@ -365,6 +390,7 @@ backup = threading.Thread(target=backupThread,daemon=True,args=[0])
 backup.start()
 #endNode.start()
 endNode = threading.Thread(target=endNodeJob, daemon=True, args=[0])
+endNode.start()
 
 sel = 0
 class Screen(object):
@@ -524,16 +550,23 @@ def input_stream(self):
         elif ch == curses.ascii.ESC:
             break
 
+def CursesWrapper()->int:
+    return switchboard("nah")
+
 
 def main():
-    switchboard("nah")
-    global browser
-    browser.quit()
-
-def switchboard(type:str):
+    k = 1
+    try: #try catch 14
+        k = CursesWrapper()
+    except Exception as e:
+        exceptions.put_nowait((e,14))
+        CursesWrapper()
+orginal = ['status',"exceptions", "threads", "backup", "Accounted For","replyQueue","timelineQueue","analyzedQueue", "Close Program"]
+def switchboard(type:str)->int:
     global sel
     notExit = True
-    lines = ['status',"exceptions", "threads", "backup", "Close Program"]
+    global orginal
+    lines = ['status',"exceptions", "threads", "backup", "Accounted For", "replyQueue","timelineQueue","analyzedQueue","Close Program"]
     while(notExit):
         if(type == "backup"):
             lines = backupInfo
@@ -552,13 +585,20 @@ def switchboard(type:str):
             else:
                 lines = ["unsuccessful", "exceptions" ,"back"]
         elif(type == "back"):
-            lines = ['status',"exceptions", "threads", "backup", "Close Program"]
+            lines = orginal
         elif(type == "Close"):
             lines = ["exiting the program will ensure unsaved data is lost, please backup before exiting","kill the program", "backupnow", "back"]
+        elif(type == "Accounted"):
+            lines = AccountedFor()
+        elif(type == "replyQueue"):
+            lines = getReplyQueue()
+        elif(type == "timelineQueue"):
+            lines = getTimelineQueue()
+        elif(type == "analyzedQueue"):
+            lines = getAnalyzeQueue()
         elif(type == "kill"):
             lines = statusInfo()
             notExit = False
-            continue
         screen = Screen(lines)
         screen.run()
         type = lines[sel].split(" ")[0]
@@ -568,20 +608,22 @@ def switchboard(type:str):
         # except IndexError:
         #     type = "back"
         #     print(sel)
+    return 0
 
 def backuptext() -> []:
     return backupInfo
+
 def ExceptionsInfo()->[]:
     while exceptions.qsize() != 0:
         Net.append(exceptions.get_nowait())
     if len(Net) == 0:
         ret = ["no exceptions","back"]
         return ret
-    ret = list(map(repr,Net))
-    ret.append("back")
+    ret = list(map(lambda x : repr(x[0]) + " // " + str(x[1]),Net))
+    ret.insert(0,"back")
     return ret
 def threadInfo()->[]:
-    temp = [""]*(timelineNodeA+replyNodeA+analyzeNodeA)
+    temp = [""]*(timelineNodeA+replyNodeA+analyzeNodeA+1)
     i = 0
     for s in tNodeStatus:
         temp[i] = "thread"+str(i)+" timelineThread " + str(s)
@@ -592,6 +634,7 @@ def threadInfo()->[]:
     for s in aNodeStatus:
         temp[i] = "thread" + str(i) + " analyzeThread " + str(s)
         i+=1
+    temp[i] = "thread" + str(i) + " endthread "
     temp.append("back")
     return temp
 def statusInfo()->[]:
@@ -612,10 +655,53 @@ def statusInfo()->[]:
     temp[7] = "uptime " + str(time.time()-start_time)
     temp.append("back")
     return temp
+getQueue = lambda q, ret, ki: ret if (ki >= 10 or q.empty()) else getQueue(q,ret.append(str(q.get_nowait())), ki+1)
+def AccountedFor()->[]:
+    global accounts
+    global Counts
+    global exceptions
+    try: #try catch 10
+        i = 0
+        while not accounts.empty() or i < 10:
+            Counts.append(accounts.get_nowait())
+            i+=1
+        return Counts
+    except Exception as e:
+        exceptions.put_nowait((e,10))
+    return ["back"]
+def getReplyQueue()->[]:
+    try: #try catch 11
+        i = 0
+        while not replies.empty() or i < 10:
+            reps.append(str(replies.get_nowait()))
+            i+=1
+        return reps
+    except Exception as e:
+        exceptions.put_nowait((e,11))
+    return ["back"]
+def getTimelineQueue()->[]:
+    try: #try catch 12
+        i = 0
+        while not timelines.empty() or i < 10:
+            times.append(str(timelines.get_nowait()))
+            i+=1
+        return times
+    except Exception as e:
+        exceptions.put_nowait((e,12))
+    return ["back"]
+def getAnalyzeQueue()->[]:
+    try: #try catch 13
+        i = 0
+        getQueue = lambda q, ret, ki: ret if (ki >= 10 or q.empty()) else getQueue(q,ret.append(str(q.get_nowait())), ki+1)
+        # while not analyzed.empty() or i < 10:
+        #     ans.append(str(analyzed.get_nowait()))
+        #     i+=1
+        return getQueue(analyzed, ans, i)
 
 
-
-
+    except Exception as e:
+        exceptions.put_nowait((e,13))
+    return ["back"]
 start_time = time.time()
 if __name__ == '__main__':
     main()
