@@ -691,7 +691,7 @@ def getTimelineQueue()->[]:
     return ["back"]
 def getAnalyzeQueue()->[]:
     try: #try catch 13
-        i = 0
+        i = 0ret = list(map(lambda x : repr(x[0]) + " // " + str(x[1]),Net))
         getQueue = lambda q, ret, ki: ret if (ki >= 10 or q.empty()) else getQueue(q,ret.append(str(q.get_nowait())), ki+1)
         # while not analyzed.empty() or i < 10:
         #     ans.append(str(analyzed.get_nowait()))
@@ -706,7 +706,7 @@ start_time = time.time()
 if __name__ == '__main__':
     try:
         main()
-    except Exception as e:
         ret = list(map(lambda x: repr(x[0]) + " // " + str(x[1]), Net))
         print(ret)
+    except Exception as e:
         print(repr(e))
