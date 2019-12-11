@@ -704,4 +704,9 @@ def getAnalyzeQueue()->[]:
     return ["back"]
 start_time = time.time()
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception as e:
+        ret = list(map(lambda x: repr(x[0]) + " // " + str(x[1]), Net))
+        print(ret)
+        print(repr(e))
