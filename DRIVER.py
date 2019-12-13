@@ -706,7 +706,7 @@ start_time = time.time()
 if __name__ == '__main__':
     try:
         main()
-        ret = list(map(lambda x: repr(x[0]) + " // " + str(x[1]), Net))
-        print(ret)
+        #ret = list(map(lambda x: repr(x[0]) + " // " + str(x[1]), Net))
+        print(ExceptionsInfo())
     except Exception as e:
         print(repr(e))
