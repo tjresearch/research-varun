@@ -336,7 +336,7 @@ def getReplies(user:int):
                 time.sleep(1)
                 browser.get("https://twitter.com/i/web/status/" + x)
                 soup = BeautifulSoup(browser.page_source, "lxml")
-                replycount = int(soup.find(class_ = "ProfileTweet-actionCountForPresentation").string)
+                replycount = soup.find(class_ = "ProfileTweet-actionCountForPresentation").string
                 stats[x]["replycount"] = replycount
                 data = soup.find_all(class_="account-group")
                 datum = []
