@@ -313,7 +313,7 @@ def getRetweets(ids:[], user:int):
 def getReplies(user:int):
 
     #path = os.path.abspath("phantomjs-2.1.1-linux-x86_64/bin/phantomjs")
-    browser = webdriver.Chrome
+    browser = webdriver.Firefox
     #print("got to Replies")
     try:
         if len(save[str(user)]["replies"]) == 0 or reloadReplies:
@@ -322,12 +322,12 @@ def getReplies(user:int):
             #options.add_argument('-headless')
 
             #browser = webdriver.Firefox(executable_path=path, firefox_options=options)
-            path = os.path.abspath("chromedriver")
+            path = os.path.abspath("geckodriver")
             # options = webdriver.FirefoxOptions()
-            options = webdriver.ChromeOptions()
+            options = webdriver.FirefoxOptions()
             options.add_argument("-headless")
             # browser = webdriver.PhantomJS(executable_path=path)
-            browser = webdriver.Chrome(executable_path=path, options=options)
+            browser = webdriver.Firefox(executable_path=path, options=options)
 
             i = 0
             for x in save[str(user)]["timeline"]:
